@@ -22,8 +22,7 @@ namespace ClinicManager.Models
         // TODO: Dodanie relacji do Lekarza (po dodaniu ASP.NET Identity)
         // public string? AssignedDoctorId { get; set; }
 
-        // Zostawiam zkomentowane do momentu dodania kolejnych modeli
-        // public ICollection<ProcedurePerformed> Procedures { get; set; } = new List<ProcedurePerformed>();
-        // public ICollection<ClinicalNote> ClinicalNotes { get; set; } = new List<ClinicalNote>();
+        public ICollection<ProcedurePerformed> Procedures { get; set; } = new List<ProcedurePerformed>();
+        public ICollection<ClinicalNote> ClinicalNotes { get; set; } = new List<ClinicalNote>();
     }
 }

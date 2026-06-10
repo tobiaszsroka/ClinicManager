@@ -31,7 +31,7 @@ namespace ClinicManager.Models
         // Relacja 1:1 z MedicalRecord
         public MedicalRecord? MedicalRecord { get; set; }
         
-        // Relacja 1:N z Visit - dodamy w następnym kroku
-        // public ICollection<Visit> Visits { get; set; } = new List<Visit>();
+        // Relacja 1:N z Visit
+        public ICollection<Visit> Visits { get; set; } = new List<Visit>();
     }
 }

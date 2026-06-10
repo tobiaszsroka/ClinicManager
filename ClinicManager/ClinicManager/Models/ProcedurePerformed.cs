@@ -22,7 +22,6 @@ namespace ClinicManager.Models
         public int VisitId { get; set; }
         public Visit? Visit { get; set; }
 
-        // Zostawiam zakomentowane dopóki nie utworzymy PrescribedMedication
-        // public ICollection<PrescribedMedication> PrescribedMedications { get; set; } = new List<PrescribedMedication>();
+        public ICollection<PrescribedMedication> PrescribedMedications { get; set; } = new List<PrescribedMedication>();
     }
 }
