@@ -80,3 +80,6 @@ nbomber-reports/
 
 # Environment
 appsettings.Development.json
+
+# Trello
+trello_cards.md
