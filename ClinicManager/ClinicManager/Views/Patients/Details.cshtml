@@ -1,0 +1,42 @@
+@model ClinicManager.Models.Patient
+
+@{
+    ViewData["Title"] = "Szczegóły pacjenta";
+}
+
+<div class="mb-4">
+    <h2>Karta pacjenta</h2>
+    <p class="text-muted">Szczegółowe informacje o pacjencie.</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 pt-1">@Model.FirstName @Model.LastName</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">ID Systemowe</dt>
+                    <dd class="col-sm-8">@Model.Id</dd>
+
+                    <dt class="col-sm-4 text-muted">PESEL</dt>
+                    <dd class="col-sm-8 fw-bold">@Model.Pesel</dd>
+
+                    <dt class="col-sm-4 text-muted">Numer ubezpieczenia</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrEmpty(Model.InsuranceNumber) ? "Brak wpisu" : Model.InsuranceNumber)</dd>
+
+                    <dt class="col-sm-4 text-muted">Numer telefonu</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "Brak wpisu" : Model.PhoneNumber)</dd>
+
+                    <dt class="col-sm-4 text-muted">Adres E-mail</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrEmpty(Model.Email) ? "Brak wpisu" : Model.Email)</dd>
+                </dl>
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">Powrót do listy</a>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary px-4">Edytuj</a>
+            </div>
+        </div>
+    </div>
+</div>

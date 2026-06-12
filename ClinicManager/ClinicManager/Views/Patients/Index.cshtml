@@ -1,0 +1,66 @@
+@model IEnumerable<ClinicManager.Models.Patient>
+
+@{
+    ViewData["Title"] = "Pacjenci";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Zarządzanie pacjentami</h1>
+    <a asp-action="Create" class="btn btn-primary">
+        Dodaj nowego pacjenta
+    </a>
+</div>
+
+<form asp-action="Index" method="get" class="mb-4">
+    <div class="input-group shadow-sm">
+        <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Wyszukaj po nazwisku lub numerze PESEL..." />
+        <button type="submit" class="btn btn-secondary">Szukaj</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Wyczyść</a>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Imię i nazwisko</th>
+                        <th>PESEL</th>
+                        <th>Nr ubezpieczenia</th>
+                        <th>Telefon</th>
+                        <th>E-mail</th>
+                        <th class="text-end">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@item.FirstName @item.LastName</strong>
+                            </td>
+                            <td>@item.Pesel</td>
+                            <td>@(string.IsNullOrEmpty(item.InsuranceNumber) ? "-" : item.InsuranceNumber)</td>
+                            <td>@(string.IsNullOrEmpty(item.PhoneNumber) ? "-" : item.PhoneNumber)</td>
+                            <td>@(string.IsNullOrEmpty(item.Email) ? "-" : item.Email)</td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edytuj</a>
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info">Szczegóły</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Usuń</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!Model.Any())
+        {
+            <div class="text-center py-4 text-muted">
+                Brak pacjentów w systemie.
+            </div>
+        }
+    </div>
+</div>
