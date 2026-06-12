@@ -1,0 +1,31 @@
+@model ClinicManager.Models.Visit
+@{ ViewData["Title"] = "Usuwanie Wizyty"; }
+
+<div class="mb-4">
+    <h2>Usuwanie wizyty</h2>
+    <h4 class="text-danger">Czy na pewno chcesz usunąć tę wizytę z systemu?</h4>
+</div>
+
+<div class="card shadow-sm border-danger max-w-lg mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Data i godzina</dt>
+            <dd class="col-sm-8">@Model.ScheduledDate.ToString("g")</dd>
+            
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">@Model.Status</dd>
+
+            <dt class="col-sm-4">Pacjent</dt>
+            <dd class="col-sm-8">@Model.Patient?.FirstName @Model.Patient?.LastName</dd>
+            
+            <dt class="col-sm-4">Lekarz</dt>
+            <dd class="col-sm-8">@Model.Doctor?.Email</dd>
+        </dl>
+    </div>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <input type="submit" value="Usuń bezpowrotnie" class="btn btn-danger" />
+    <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+</form>

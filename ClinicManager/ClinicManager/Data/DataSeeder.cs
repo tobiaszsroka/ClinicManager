@@ -37,9 +37,31 @@ namespace ClinicManager.Data
                 var createPowerUser = await userManager.CreateAsync(adminUser, "Admin123!");
                 if (createPowerUser.Succeeded)
                 {
-                    // Przypisanie nowo utworzonego użytkownika do roli Admin
                     await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
+            }
+
+            // Tworzenie kont lekarzy do testowania
+            var doctorsEmails = new[] { "lekarz@clinic.com", "nowak@clinic.com", "kowalski@clinic.com" };
+            foreach (var email in doctorsEmails)
+            {
+                var doctorUser = await userManager.FindByEmailAsync(email);
+                if (doctorUser == null)
+                {
+                    doctorUser = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                    var createDoctor = await userManager.CreateAsync(doctorUser, "Lekarz123!");
+                    if (createDoctor.Succeeded) await userManager.AddToRoleAsync(doctorUser, "Lekarz");
+                }
+            }
+
+            // Tworzenie domyślnego konta rejestratorki
+            var receptionistEmail = "rejestracja@clinic.com";
+            var receptionistUser = await userManager.FindByEmailAsync(receptionistEmail);
+            if (receptionistUser == null)
+            {
+                receptionistUser = new IdentityUser { UserName = receptionistEmail, Email = receptionistEmail, EmailConfirmed = true };
+                var createReceptionist = await userManager.CreateAsync(receptionistUser, "Rejestracja123!");
+                if (createReceptionist.Succeeded) await userManager.AddToRoleAsync(receptionistUser, "Rejestratorka");
             }
         }
     }

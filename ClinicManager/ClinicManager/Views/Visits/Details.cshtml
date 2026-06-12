@@ -1,0 +1,45 @@
+@model ClinicManager.Models.Visit
+@{ ViewData["Title"] = "Szczegóły Wizyty"; }
+
+<div class="mb-4">
+    <h2>Szczegóły wizyty</h2>
+</div>
+
+<div class="card shadow-sm max-w-lg mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Data i godzina</dt>
+            <dd class="col-sm-8">@Model.ScheduledDate.ToString("g")</dd>
+            
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">
+                @switch (Model.Status)
+                {
+                    case ClinicManager.Models.VisitStatus.Scheduled:
+                        <span class="badge bg-warning text-dark">Zaplanowana</span>
+                        break;
+                    case ClinicManager.Models.VisitStatus.InProgress:
+                        <span class="badge bg-info text-dark">W trakcie</span>
+                        break;
+                    case ClinicManager.Models.VisitStatus.Completed:
+                        <span class="badge bg-success">Zakończona</span>
+                        break;
+                    case ClinicManager.Models.VisitStatus.Cancelled:
+                        <span class="badge bg-danger">Anulowana</span>
+                        break;
+                }
+            </dd>
+
+            <dt class="col-sm-4">Pacjent</dt>
+            <dd class="col-sm-8"><a asp-controller="Patients" asp-action="Details" asp-route-id="@Model.PatientId">@Model.Patient?.FirstName @Model.Patient?.LastName</a></dd>
+            
+            <dt class="col-sm-4">Lekarz</dt>
+            <dd class="col-sm-8">@Model.Doctor?.Email</dd>
+        </dl>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary">Edytuj</a>
+    <a asp-action="Index" class="btn btn-secondary">Wróć do listy</a>
+</div>

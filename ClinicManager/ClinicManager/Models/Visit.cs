@@ -19,8 +19,12 @@ namespace ClinicManager.Models
         public int PatientId { get; set; }
         public Patient? Patient { get; set; }
 
-        // TODO: Dodanie relacji do Lekarza (po dodaniu ASP.NET Identity)
-        // public string? AssignedDoctorId { get; set; }
+        // Relacja do Lekarza (ASP.NET Identity)
+        [Required(ErrorMessage = "Wymagane jest przypisanie lekarza")]
+        public string AssignedDoctorId { get; set; } = string.Empty;
+        
+        [ForeignKey("AssignedDoctorId")]
+        public Microsoft.AspNetCore.Identity.IdentityUser? Doctor { get; set; }
 
         public ICollection<ProcedurePerformed> Procedures { get; set; } = new List<ProcedurePerformed>();
         public ICollection<ClinicalNote> ClinicalNotes { get; set; } = new List<ClinicalNote>();

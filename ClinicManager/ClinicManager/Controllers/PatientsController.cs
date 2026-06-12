@@ -34,6 +34,7 @@ namespace ClinicManager.Controllers
         }
 
         // GET: Patients/Details/5
+        [Authorize(Roles = "Admin,Lekarz,Rejestratorka")]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -42,8 +43,10 @@ namespace ClinicManager.Controllers
             }
 
             var patient = await _context.Patients
+                .Include(p => p.MedicalRecord)
+                .Include(p => p.Visits)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            
+                
             if (patient == null)
             {
                 return NotFound();

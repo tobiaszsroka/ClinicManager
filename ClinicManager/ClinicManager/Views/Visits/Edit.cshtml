@@ -1,0 +1,66 @@
+@model ClinicManager.Models.Visit
+@{ ViewData["Title"] = "Edycja Wizyty"; }
+
+<div class="mb-4">
+    <h2>Edycja wizyty</h2>
+</div>
+
+<div class="card shadow-sm max-w-lg">
+    <div class="card-body">
+        <form asp-action="Edit">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
+            @if (User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka"))
+            {
+                <input type="hidden" asp-for="ScheduledDate" />
+                <input type="hidden" asp-for="PatientId" />
+                <input type="hidden" asp-for="AssignedDoctorId" />
+
+                <div class="alert alert-info">Jako lekarz możesz zaktualizować jedynie status tej wizyty.</div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Zaplanowana data:</label>
+                    <p>@Model.ScheduledDate.ToString("g")</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label asp-for="Status" class="form-label">Zmień Status</label>
+                    <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ClinicManager.Models.VisitStatus>()"></select>
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <label asp-for="ScheduledDate" class="form-label">Data i godzina</label>
+                    <input asp-for="ScheduledDate" class="form-control" type="datetime-local" value="@Model.ScheduledDate.ToString("yyyy-MM-ddTHH:mm")" />
+                    <span asp-validation-for="ScheduledDate" class="text-danger"></span>
+                </div>
+                
+                <div class="mb-3">
+                    <label asp-for="PatientId" class="form-label">Pacjent</label>
+                    <select asp-for="PatientId" class="form-select" asp-items="ViewBag.PatientId"></select>
+                </div>
+                
+                <div class="mb-3">
+                    <label asp-for="AssignedDoctorId" class="form-label">Lekarz prowadzący</label>
+                    <select asp-for="AssignedDoctorId" class="form-select" asp-items="ViewBag.AssignedDoctorId"></select>
+                </div>
+                
+                <div class="mb-3">
+                    <label asp-for="Status" class="form-label">Status</label>
+                    <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ClinicManager.Models.VisitStatus>()"></select>
+                </div>
+            }
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+                <button type="submit" class="btn btn-primary px-4">Zapisz zmiany</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

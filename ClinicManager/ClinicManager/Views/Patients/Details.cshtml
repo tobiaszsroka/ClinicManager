@@ -41,5 +41,65 @@
                 </div>
             </div>
         </div>
+
+        <div class="mt-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Historia i Planowane Wizyty</h4>
+                @if (User.IsInRole("Admin") || User.IsInRole("Rejestratorka"))
+                {
+                    <a asp-controller="Visits" asp-action="Create" asp-route-patientId="@Model.Id" class="btn btn-sm btn-success">
+                        Umów nową wizytę
+                    </a>
+                }
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th class="text-end">Akcje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Visits == null || !Model.Visits.Any())
+                            {
+                                <tr><td colspan="3" class="text-center text-muted py-3">Ten pacjent nie ma żadnych zapisanych wizyt.</td></tr>
+                            }
+                            else
+                            {
+                                @foreach(var visit in Model.Visits.OrderByDescending(v => v.ScheduledDate))
+                                {
+                                    <tr>
+                                        <td class="align-middle fw-bold">@visit.ScheduledDate.ToString("g")</td>
+                                        <td class="align-middle">
+                                            @switch (visit.Status)
+                                            {
+                                                case ClinicManager.Models.VisitStatus.Scheduled:
+                                                    <span class="badge bg-warning text-dark">Zaplanowana</span>
+                                                    break;
+                                                case ClinicManager.Models.VisitStatus.InProgress:
+                                                    <span class="badge bg-info text-dark">W trakcie</span>
+                                                    break;
+                                                case ClinicManager.Models.VisitStatus.Completed:
+                                                    <span class="badge bg-success">Zakończona</span>
+                                                    break;
+                                                case ClinicManager.Models.VisitStatus.Cancelled:
+                                                    <span class="badge bg-danger">Anulowana</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td class="align-middle text-end">
+                                            <a asp-controller="Visits" asp-action="Details" asp-route-id="@visit.Id" class="btn btn-sm btn-outline-info">Pokaż szczegóły</a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
