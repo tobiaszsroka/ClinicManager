@@ -1,0 +1,86 @@
+@model ClinicManager.Models.MedicalRecord
+
+@{
+    ViewData["Title"] = "Kartoteka pacjenta";
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2>Kartoteka pacjenta: @ViewData["PatientName"]</h2>
+        <p class="text-muted mb-0">
+            PESEL: <strong class="text-dark">@ViewData["PatientPesel"]</strong> | 
+            Nr ubezpieczenia: <strong class="text-dark">@ViewData["PatientInsurance"]</strong>
+        </p>
+    </div>
+    <a asp-controller="Patients" asp-action="Details" asp-route-id="@Model.PatientId" class="btn btn-outline-secondary">Wróć do profilu</a>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 pt-1">Notatki ogólne</h5>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">Edytuj notatki</a>
+            </div>
+            <div class="card-body">
+                @if (string.IsNullOrEmpty(Model.GeneralNotes))
+                {
+                    <p class="text-muted fst-italic mb-0">Brak notatek ogólnych w systemie.</p>
+                }
+                else
+                {
+                    <p class="mb-0" style="white-space: pre-wrap;">@Model.GeneralNotes</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 pt-1">Dokumenty i skany</h5>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Documents == null || !Model.Documents.Any())
+                {
+                    <div class="p-3 text-center text-muted">Nie wgrano żadnych dokumentów.</div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var doc in Model.Documents)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                                    @doc.OriginalFileName
+                                    <br />
+                                    <small class="text-muted">Wgrano: @doc.UploadDate.ToString("d")</small>
+                                </div>
+                                <div class="d-flex">
+                                    <a asp-action="DownloadScan" asp-route-id="@doc.Id" class="btn btn-sm btn-outline-primary me-2" title="Pobierz">
+                                        Pobierz
+                                    </a>
+                                    <form asp-action="DeleteDocument" asp-route-id="@doc.Id" method="post" onsubmit="return confirm('Czy na pewno chcesz usunąć ten plik?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń">
+                                            Usuń
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="card-footer bg-light">
+                <form asp-action="UploadDocument" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="medicalRecordId" value="@Model.Id" />
+                    <div class="input-group input-group-sm">
+                        <input type="file" name="scanFiles" class="form-control" multiple required />
+                        <button class="btn btn-secondary" type="submit">Wgraj</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,35 @@
+@model ClinicManager.Models.MedicalRecord
+
+@{
+    ViewData["Title"] = "Edytuj notatki kartoteki";
+}
+
+<div class="mb-4">
+    <h2>Edycja kartoteki</h2>
+    <p class="text-muted">Aktualizujesz notatki pacjenta: <strong>@ViewData["PatientName"]</strong>.</p>
+</div>
+
+<div class="card shadow-sm max-w-lg">
+    <div class="card-body">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="PatientId" />
+            
+            <div class="mb-3">
+                <label asp-for="GeneralNotes" class="form-label">Notatki ogólne (wywiad, alergie)</label>
+                <textarea asp-for="GeneralNotes" class="form-control" rows="8"></textarea>
+                <span asp-validation-for="GeneralNotes" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a asp-action="Details" asp-route-id="@Model.PatientId" class="btn btn-secondary">Anuluj</a>
+                <button type="submit" class="btn btn-primary px-4">Zapisz zmiany</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

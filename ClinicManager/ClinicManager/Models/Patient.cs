@@ -22,7 +22,7 @@ namespace ClinicManager.Models
         [MaxLength(20)]
         public string? InsuranceNumber { get; set; }
 
-        [Phone(ErrorMessage = "Niepoprawny format numeru telefonu")]
+        [RegularExpression(@"^\d{9}$", ErrorMessage = "Numer telefonu musi składać się z dokładnie 9 cyfr bez spacji")]
         public string? PhoneNumber { get; set; }
 
         [EmailAddress(ErrorMessage = "Niepoprawny format adresu e-mail")]

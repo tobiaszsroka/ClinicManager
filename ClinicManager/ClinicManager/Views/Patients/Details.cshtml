@@ -35,7 +35,10 @@
             </div>
             <div class="card-footer bg-white d-flex justify-content-between">
                 <a asp-action="Index" class="btn btn-outline-secondary">Powrót do listy</a>
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary px-4">Edytuj</a>
+                <div>
+                    <a asp-controller="MedicalRecords" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info me-2 text-white">Przejdź do kartoteki</a>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary px-4">Edytuj</a>
+                </div>
             </div>
         </div>
     </div>

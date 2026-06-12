@@ -8,9 +8,9 @@ namespace ClinicManager.Models
         [Key]
         public int Id { get; set; }
 
-        public string? DocumentScanUrl { get; set; }
-        
         public string? GeneralNotes { get; set; }
+
+        public ICollection<MedicalDocument>? Documents { get; set; }
 
         // Klucz obcy i relacja 1:1 z pacjentem
         [Required]

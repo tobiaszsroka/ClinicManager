@@ -1,0 +1,40 @@
+@model ClinicManager.Models.MedicalRecord
+
+@{
+    ViewData["Title"] = "Nowa kartoteka";
+}
+
+<div class="mb-4">
+    <h2>Kartoteka pacjenta</h2>
+    <p class="text-muted">Tworzysz kartotekę dla pacjenta: <strong>@ViewData["PatientName"]</strong>.</p>
+</div>
+
+<div class="card shadow-sm max-w-lg">
+    <div class="card-body">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="PatientId" />
+            
+            <div class="mb-3">
+                <label asp-for="GeneralNotes" class="form-label">Notatki ogólne (wywiad, alergie)</label>
+                <textarea asp-for="GeneralNotes" class="form-control" rows="5" placeholder="Brak alergii. Wpisz najważniejsze informacje..."></textarea>
+                <span asp-validation-for="GeneralNotes" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label for="scanFiles" class="form-label">Wgraj skany dokumentów (możesz zaznaczyć wiele)</label>
+                <input class="form-control" type="file" id="scanFiles" name="scanFiles" multiple>
+                <div class="form-text">Maksymalny rozmiar pliku 5MB. Dozwolone formaty: PDF, JPG, PNG.</div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a asp-controller="Patients" asp-action="Details" asp-route-id="@Model.PatientId" class="btn btn-secondary">Wróć do profilu</a>
+                <button type="submit" class="btn btn-primary px-4">Zapisz kartotekę</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
