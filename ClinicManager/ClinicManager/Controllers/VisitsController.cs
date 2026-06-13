@@ -51,6 +51,7 @@ namespace ClinicManager.Controllers
                 .Include(v => v.Procedures)
                 .Include(v => v.PrescribedMedications)
                     .ThenInclude(p => p.Medication)
+                .Include(v => v.ClinicalNotes)
                 .FirstOrDefaultAsync(m => m.Id == id);
             
             if (visit == null) return NotFound();
@@ -367,6 +368,57 @@ namespace ClinicManager.Controllers
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "Lek został usunięty z recepty.";
             return RedirectToAction(nameof(Details), new { id = visit.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Lekarz")]
+        public async Task<IActionResult> AddNote(int visitId, string? content)
+        {
+            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId == null)
+            {
+                return Forbid();
+            }
+
+            var visit = await _context.Visits
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == visitId);
+
+            if (visit == null)
+            {
+                return NotFound();
+            }
+
+            if (visit.AssignedDoctorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            if (visit.Status != VisitStatus.InProgress)
+            {
+                TempData["ErrorMessage"] = "Notatkę kliniczną można dodać tylko do wizyty w trakcie.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            content = content?.Trim();
+            if (string.IsNullOrWhiteSpace(content) || content.Length > 4000)
+            {
+                TempData["ErrorMessage"] = "Treść notatki jest wymagana i może mieć maksymalnie 4000 znaków.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            _context.ClinicalNotes.Add(new ClinicalNote
+            {
+                VisitId = visitId,
+                Content = content,
+                Author = currentUserId,
+                Timestamp = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Notatka kliniczna została dodana.";
+            return RedirectToAction(nameof(Details), new { id = visitId });
         }
 
         private async Task PopulateDropDownsAsync(object? selectedPatient = null, object? selectedDoctor = null)

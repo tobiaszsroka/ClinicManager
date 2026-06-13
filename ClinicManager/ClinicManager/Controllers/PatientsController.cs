@@ -49,6 +49,8 @@ namespace ClinicManager.Controllers
                 .Include(p => p.Visits)
                     .ThenInclude(v => v.PrescribedMedications)
                         .ThenInclude(p => p.Medication)
+                .Include(p => p.Visits)
+                    .ThenInclude(v => v.ClinicalNotes)
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
             if (patient == null)

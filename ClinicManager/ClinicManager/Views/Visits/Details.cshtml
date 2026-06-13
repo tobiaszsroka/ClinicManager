@@ -6,6 +6,8 @@
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     var canPrescribe = User.IsInRole("Admin") ||
         (User.IsInRole("Lekarz") && Model.AssignedDoctorId == currentUserId);
+    var canAccessClinicalNotes = User.IsInRole("Lekarz") &&
+        Model.AssignedDoctorId == currentUserId;
 }
 
 <div class="mb-4">
@@ -54,6 +56,58 @@
         </dl>
     </div>
 </div>
+
+@if (canAccessClinicalNotes)
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Poufne notatki kliniczne</h4>
+            <span class="badge bg-secondary">Tylko przypisany lekarz</span>
+        </div>
+        <div class="card-body">
+            @if (Model.ClinicalNotes != null && Model.ClinicalNotes.Any())
+            {
+                <div class="mb-4">
+                    @foreach (var note in Model.ClinicalNotes.OrderByDescending(n => n.Timestamp))
+                    {
+                        <div class="bg-light border rounded p-3 mb-3">
+                            <div class="small text-muted mb-2">
+                                Dodano: @note.Timestamp.ToString("g")
+                            </div>
+                            <div style="white-space: pre-wrap;">@note.Content</div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">Nie dodano jeszcze żadnych notatek klinicznych.</p>
+            }
+
+            @if (Model.Status == ClinicManager.Models.VisitStatus.InProgress)
+            {
+                <div class="border-top pt-3">
+                    <h5>Dodaj notatkę</h5>
+                    <form asp-action="AddNote" method="post">
+                        <input type="hidden" name="visitId" value="@Model.Id" />
+                        <div class="mb-3">
+                            <label for="clinicalNoteContent" class="form-label">Treść notatki</label>
+                            <textarea id="clinicalNoteContent" name="content" class="form-control"
+                                      rows="5" maxlength="4000" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Dodaj notatkę</button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    Notatkę można dodać po zmianie statusu wizyty na „W trakcie”.
+                </div>
+            }
+        </div>
+    </div>
+}
 
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-white">

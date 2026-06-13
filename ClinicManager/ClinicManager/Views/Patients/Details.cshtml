@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Szczegóły pacjenta";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
 <div class="mb-4">
@@ -106,6 +107,45 @@
                     </table>
                 </div>
             </div>
+
+            @if (User.IsInRole("Lekarz"))
+            {
+                var visitsWithNotes = Model.Visits?
+                    .Where(v => v.AssignedDoctorId == currentUserId &&
+                        v.ClinicalNotes != null && v.ClinicalNotes.Any())
+                    .OrderByDescending(v => v.ScheduledDate)
+                    .ToList();
+
+                @if (visitsWithNotes != null && visitsWithNotes.Any())
+                {
+                    <div class="card shadow-sm mt-4">
+                        <div class="card-header bg-white">
+                            <h4 class="mb-0">Notatki kliniczne z moich wizyt</h4>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var visit in visitsWithNotes)
+                            {
+                                <div class="border-bottom pb-3 mb-3">
+                                    <div class="d-flex justify-content-between gap-3 mb-2">
+                                        <strong>Wizyta: @visit.ScheduledDate.ToString("g")</strong>
+                                        <a asp-controller="Visits" asp-action="Details" asp-route-id="@visit.Id"
+                                           class="btn btn-sm btn-outline-info">Pokaż wizytę</a>
+                                    </div>
+                                    @foreach (var note in visit.ClinicalNotes.OrderByDescending(n => n.Timestamp))
+                                    {
+                                        <div class="bg-light border rounded p-3 mb-2">
+                                            <div class="small text-muted mb-2">
+                                                Dodano: @note.Timestamp.ToString("g")
+                                            </div>
+                                            <div style="white-space: pre-wrap;">@note.Content</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
         </div>
     </div>
 </div>

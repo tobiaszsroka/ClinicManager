@@ -8,7 +8,6 @@ namespace ClinicManager.Models
         [Key]
         public int Id { get; set; }
 
-        // Tymczasowe rozwiązanie do czasu wprowadzenia Identity (gdzie Autor to bedzie ID Lekarza)
         [Required]
         public string Author { get; set; } = string.Empty;
 
@@ -17,7 +16,6 @@ namespace ClinicManager.Models
 
         public DateTime Timestamp { get; set; } = DateTime.Now;
 
-        // Klucz obcy do wizyty
         [Required]
         [ForeignKey("Visit")]
         public int VisitId { get; set; }
