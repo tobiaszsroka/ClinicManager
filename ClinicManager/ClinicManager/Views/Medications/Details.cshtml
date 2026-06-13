@@ -1,0 +1,27 @@
+@model ClinicManager.Models.Medication
+
+@{
+    ViewData["Title"] = "Szczegóły leku";
+}
+
+<div class="mb-4">
+    <h2>Szczegóły leku</h2>
+</div>
+
+<div class="card shadow-sm max-w-lg">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-5">Nazwa</dt>
+            <dd class="col-sm-7">@Model.Name</dd>
+            <dt class="col-sm-5">Cena jednostkowa</dt>
+            <dd class="col-sm-7">@Model.UnitPrice.ToString("c")</dd>
+        </dl>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-between">
+        <a asp-action="Index" class="btn btn-secondary">Powrót</a>
+        <div>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edytuj</a>
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Usuń</a>
+        </div>
+    </div>
+</div>

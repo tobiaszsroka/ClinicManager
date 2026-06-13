@@ -22,10 +22,16 @@ namespace ClinicManager.Models
         public int MedicationId { get; set; }
         public Medication? Medication { get; set; }
 
-        // Klucz obcy do wykonanej procedury
         [Required]
-        [ForeignKey("ProcedurePerformed")]
-        public int ProcedurePerformedId { get; set; }
-        public ProcedurePerformed? ProcedurePerformed { get; set; }
+        [ForeignKey("Visit")]
+        public int VisitId { get; set; }
+        public Visit? Visit { get; set; }
+
+        [Required]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal UnitPriceAtPrescription { get; set; }
+
+        [NotMapped]
+        public decimal TotalCost => UnitPriceAtPrescription * Quantity;
     }
 }

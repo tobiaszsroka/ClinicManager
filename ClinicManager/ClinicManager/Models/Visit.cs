@@ -30,5 +30,6 @@ namespace ClinicManager.Models
 
         public ICollection<MedicalProcedure> Procedures { get; set; } = new List<MedicalProcedure>();
         public ICollection<ClinicalNote> ClinicalNotes { get; set; } = new List<ClinicalNote>();
+        public ICollection<PrescribedMedication> PrescribedMedications { get; set; } = new List<PrescribedMedication>();
     }
 }

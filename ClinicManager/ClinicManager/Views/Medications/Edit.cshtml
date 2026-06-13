@@ -1,0 +1,36 @@
+@model ClinicManager.Models.Medication
+
+@{
+    ViewData["Title"] = "Edytuj lek";
+}
+
+<div class="mb-4">
+    <h2>Edytuj lek</h2>
+</div>
+
+<div class="card shadow-sm max-w-lg">
+    <div class="card-body">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Nazwa leku</label>
+                <input asp-for="Name" class="form-control" maxlength="200" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="UnitPrice" class="form-label">Cena jednostkowa (PLN)</label>
+                <input asp-for="UnitPrice" class="form-control" type="number" min="0.01" max="10000" step="0.01" />
+                <span asp-validation-for="UnitPrice" class="text-danger"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+                <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

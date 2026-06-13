@@ -21,7 +21,5 @@ namespace ClinicManager.Models
         [ForeignKey("Visit")]
         public int VisitId { get; set; }
         public Visit? Visit { get; set; }
-
-        public ICollection<PrescribedMedication> PrescribedMedications { get; set; } = new List<PrescribedMedication>();
     }
 }

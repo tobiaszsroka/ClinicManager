@@ -72,6 +72,8 @@
                             {
                                 @foreach(var visit in Model.Visits.OrderByDescending(v => v.ScheduledDate))
                                 {
+                                    var procedureCost = visit.Procedures?.Sum(p => p.FinalCost) ?? 0;
+                                    var medicationCost = visit.PrescribedMedications?.Sum(p => p.TotalCost) ?? 0;
                                     <tr>
                                         <td class="align-middle fw-bold">@visit.ScheduledDate.ToString("g")</td>
                                         <td class="align-middle">
@@ -92,7 +94,7 @@
                                             }
                                         </td>
                                         <td class="align-middle">
-                                            @(visit.Procedures?.Any() == true ? visit.Procedures.Sum(p => p.FinalCost).ToString("c") : "0,00 zł")
+                                            @((procedureCost + medicationCost).ToString("c"))
                                         </td>
                                         <td class="align-middle text-end">
                                             <a asp-controller="Visits" asp-action="Details" asp-route-id="@visit.Id" class="btn btn-sm btn-outline-info">Pokaż szczegóły</a>

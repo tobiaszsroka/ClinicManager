@@ -30,9 +30,19 @@ namespace ClinicManager.Data
                 .Property(m => m.UnitPrice)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<PrescribedMedication>()
+                .Property(p => p.UnitPriceAtPrescription)
+                .HasPrecision(18, 2);
+
             modelBuilder.Entity<ProcedurePerformed>()
                 .Property(p => p.ServiceCost)
                 .HasPrecision(18, 2);
+
+            modelBuilder.Entity<PrescribedMedication>()
+                .HasOne(p => p.Medication)
+                .WithMany(m => m.Prescriptions)
+                .HasForeignKey(p => p.MedicationId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

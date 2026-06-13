@@ -1,0 +1,61 @@
+@model IEnumerable<ClinicManager.Models.Medication>
+
+@{
+    ViewData["Title"] = "Katalog leków";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Katalog leków</h2>
+        <p class="text-muted mb-0">Zarządzanie lekami dostępnymi do wystawiania recept.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">Dodaj lek</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-striped table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nazwa leku</th>
+                    <th>Cena jednostkowa</th>
+                    <th class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Katalog leków jest pusty.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var medication in Model)
+                    {
+                        <tr>
+                            <td class="align-middle fw-bold">@medication.Name</td>
+                            <td class="align-middle">@medication.UnitPrice.ToString("c")</td>
+                            <td class="align-middle text-end">
+                                <div class="btn-group">
+                                    <a asp-action="Details" asp-route-id="@medication.Id" class="btn btn-sm btn-outline-info">Szczegóły</a>
+                                    <a asp-action="Edit" asp-route-id="@medication.Id" class="btn btn-sm btn-outline-secondary">Edytuj</a>
+                                    <a asp-action="Delete" asp-route-id="@medication.Id" class="btn btn-sm btn-outline-danger">Usuń</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

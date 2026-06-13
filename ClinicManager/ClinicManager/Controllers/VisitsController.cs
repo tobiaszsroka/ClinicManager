@@ -49,6 +49,8 @@ namespace ClinicManager.Controllers
                 .Include(v => v.Patient)
                 .Include(v => v.Doctor)
                 .Include(v => v.Procedures)
+                .Include(v => v.PrescribedMedications)
+                    .ThenInclude(p => p.Medication)
                 .FirstOrDefaultAsync(m => m.Id == id);
             
             if (visit == null) return NotFound();
@@ -58,6 +60,14 @@ namespace ClinicManager.Controllers
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (visit.AssignedDoctorId != userId) return Forbid();
             }
+
+            var medications = await _context.Medications
+                .AsNoTracking()
+                .OrderBy(m => m.Name)
+                .Select(m => new { m.Id, Label = m.Name + " (" + m.UnitPrice.ToString("0.00") + " zł)" })
+                .ToListAsync();
+            ViewData["MedicationId"] = new SelectList(medications, "Id", "Label");
+            ViewData["HasMedications"] = medications.Count > 0;
 
             return View(visit);
         }
@@ -269,6 +279,93 @@ namespace ClinicManager.Controllers
             await _context.SaveChangesAsync();
             
             TempData["SuccessMessage"] = "Procedura usunięta.";
+            return RedirectToAction(nameof(Details), new { id = visit.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Lekarz")]
+        public async Task<IActionResult> AddPrescription(int visitId, int medicationId, string dosage, int quantity)
+        {
+            var visit = await _context.Visits.FindAsync(visitId);
+            if (visit == null) return NotFound();
+
+            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Nie można wystawić recepty do zakończonej lub anulowanej wizyty.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            bool isDoctorOnly = User.IsInRole("Lekarz") && !User.IsInRole("Admin");
+            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (isDoctorOnly && visit.AssignedDoctorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            var medication = await _context.Medications.FindAsync(medicationId);
+            if (medication == null)
+            {
+                TempData["ErrorMessage"] = "Wybrany lek nie istnieje w katalogu.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            if (string.IsNullOrWhiteSpace(dosage) || dosage.Length > 100)
+            {
+                TempData["ErrorMessage"] = "Podaj dawkowanie o długości do 100 znaków.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            if (quantity < 1 || quantity > 1000)
+            {
+                TempData["ErrorMessage"] = "Ilość leku musi mieścić się w zakresie od 1 do 1000.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            _context.PrescribedMedications.Add(new PrescribedMedication
+            {
+                VisitId = visitId,
+                MedicationId = medication.Id,
+                Dosage = dosage.Trim(),
+                Quantity = quantity,
+                UnitPriceAtPrescription = medication.UnitPrice
+            });
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Lek został dodany do recepty.";
+            return RedirectToAction(nameof(Details), new { id = visitId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Lekarz")]
+        public async Task<IActionResult> DeletePrescription(int prescriptionId)
+        {
+            var prescription = await _context.PrescribedMedications
+                .Include(p => p.Visit)
+                .FirstOrDefaultAsync(p => p.Id == prescriptionId);
+
+            if (prescription == null) return NotFound();
+
+            var visit = prescription.Visit!;
+            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Nie można zmieniać recepty zakończonej lub anulowanej wizyty.";
+                return RedirectToAction(nameof(Details), new { id = visit.Id });
+            }
+
+            bool isDoctorOnly = User.IsInRole("Lekarz") && !User.IsInRole("Admin");
+            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (isDoctorOnly && visit.AssignedDoctorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            _context.PrescribedMedications.Remove(prescription);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Lek został usunięty z recepty.";
             return RedirectToAction(nameof(Details), new { id = visit.Id });
         }
 

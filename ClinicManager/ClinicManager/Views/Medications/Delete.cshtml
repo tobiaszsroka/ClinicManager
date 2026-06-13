@@ -1,0 +1,28 @@
+@model ClinicManager.Models.Medication
+
+@{
+    ViewData["Title"] = "Usuń lek";
+}
+
+<div class="mb-4">
+    <h2 class="text-danger">Usuń lek</h2>
+    <p class="text-muted">Czy na pewno chcesz usunąć ten lek z katalogu?</p>
+</div>
+
+<div class="card shadow-sm border-danger max-w-lg">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-5">Nazwa</dt>
+            <dd class="col-sm-7">@Model.Name</dd>
+            <dt class="col-sm-5">Cena jednostkowa</dt>
+            <dd class="col-sm-7">@Model.UnitPrice.ToString("c")</dd>
+        </dl>
+    </div>
+    <div class="card-footer bg-white">
+        <form asp-action="Delete" class="d-flex justify-content-between">
+            <input type="hidden" asp-for="Id" />
+            <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+            <button type="submit" class="btn btn-danger">Usuń lek</button>
+        </form>
+    </div>
+</div>

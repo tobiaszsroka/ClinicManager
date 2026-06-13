@@ -14,5 +14,7 @@ namespace ClinicManager.Models
         [Required(ErrorMessage = "Cena jest wymagana")]
         [Range(0.01, 10000.00, ErrorMessage = "Cena musi być większa niż 0")]
         public decimal UnitPrice { get; set; }
+
+        public ICollection<PrescribedMedication> Prescriptions { get; set; } = new List<PrescribedMedication>();
     }
 }
