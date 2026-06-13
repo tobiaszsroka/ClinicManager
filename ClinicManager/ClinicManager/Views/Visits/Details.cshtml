@@ -39,7 +39,95 @@
     </div>
 </div>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">Wykonane procedury i koszty</h4>
+    </div>
+    <div class="card-body">
+        @if (Model.Procedures != null && Model.Procedures.Any())
+        {
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nazwa procedury</th>
+                        <th>Opis</th>
+                        <th>Cena bazowa</th>
+                        <th>Zniżka</th>
+                        <th>Koszt końcowy</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var proc in Model.Procedures)
+                    {
+                        <tr>
+                            <td>@proc.Name</td>
+                            <td>@proc.Description</td>
+                            <td>@proc.BaseCost.ToString("c")</td>
+                            <td>@proc.Discount.ToString("c")</td>
+                            <td class="fw-bold">@proc.FinalCost.ToString("c")</td>
+                            <td>
+                                @if (Model.Status != ClinicManager.Models.VisitStatus.Completed && Model.Status != ClinicManager.Models.VisitStatus.Cancelled)
+                                {
+                                    <form asp-action="DeleteProcedure" method="post" class="d-inline">
+                                        <input type="hidden" name="procedureId" value="@proc.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Usuń</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Suma całkowita:</th>
+                        <th colspan="2" class="fs-5 text-success">@Model.Procedures.Sum(p => p.FinalCost).ToString("c")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">Brak przypisanych procedur do tej wizyty.</p>
+        }
+
+        @if (Model.Status != ClinicManager.Models.VisitStatus.Completed && Model.Status != ClinicManager.Models.VisitStatus.Cancelled)
+        {
+            <div class="mt-4 border-top pt-3">
+                <h5>Dodaj nową procedurę</h5>
+                <form asp-action="AddProcedure" method="post" class="row g-3">
+                    <input type="hidden" name="visitId" value="@Model.Id" />
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Nazwa (np. EKG)</label>
+                        <input type="text" name="name" class="form-control" required maxlength="100" />
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Opis (opcjonalnie)</label>
+                        <input type="text" name="description" class="form-control" maxlength="500" />
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label">Koszt (PLN)</label>
+                        <input type="number" name="baseCost" class="form-control" step="0.01" min="0" required />
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label class="form-label">Zniżka (PLN)</label>
+                        <input type="number" name="discount" class="form-control" step="0.01" min="0" value="0" />
+                    </div>
+                    
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-success">Dodaj procedurę</button>
+                    </div>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary">Edytuj</a>
+    <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary">Edytuj wizytę</a>
     <a asp-action="Index" class="btn btn-secondary">Wróć do listy</a>
 </div>

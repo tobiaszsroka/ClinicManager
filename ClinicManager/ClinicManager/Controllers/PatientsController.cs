@@ -45,6 +45,7 @@ namespace ClinicManager.Controllers
             var patient = await _context.Patients
                 .Include(p => p.MedicalRecord)
                 .Include(p => p.Visits)
+                    .ThenInclude(v => v.Procedures)
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
             if (patient == null)

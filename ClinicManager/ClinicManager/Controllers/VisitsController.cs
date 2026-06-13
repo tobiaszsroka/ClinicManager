@@ -48,6 +48,7 @@ namespace ClinicManager.Controllers
             var visit = await _context.Visits
                 .Include(v => v.Patient)
                 .Include(v => v.Doctor)
+                .Include(v => v.Procedures)
                 .FirstOrDefaultAsync(m => m.Id == id);
             
             if (visit == null) return NotFound();
@@ -201,6 +202,74 @@ namespace ClinicManager.Controllers
         private bool VisitExists(int id)
         {
             return _context.Visits.Any(e => e.Id == id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
+        public async Task<IActionResult> AddProcedure(int visitId, string name, string description, decimal baseCost, decimal discount)
+        {
+            var visit = await _context.Visits.FindAsync(visitId);
+            if (visit == null) return NotFound();
+
+            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Nie można dodać procedury do zakończonej lub anulowanej wizyty.";
+                return RedirectToAction(nameof(Details), new { id = visitId });
+            }
+
+            bool isLekarz = User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka");
+            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (isLekarz && visit.AssignedDoctorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            var procedure = new MedicalProcedure
+            {
+                VisitId = visitId,
+                Name = name,
+                Description = description,
+                BaseCost = baseCost,
+                Discount = discount
+            };
+
+            _context.MedicalProcedures.Add(procedure);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Procedura została pomyślnie dodana do wizyty.";
+            return RedirectToAction(nameof(Details), new { id = visitId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
+        public async Task<IActionResult> DeleteProcedure(int procedureId)
+        {
+            var procedure = await _context.MedicalProcedures.Include(p => p.Visit).FirstOrDefaultAsync(p => p.Id == procedureId);
+            if (procedure == null) return NotFound();
+
+            var visit = procedure.Visit;
+            if (visit!.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Nie można usuwać procedur z zakończonej wizyty.";
+                return RedirectToAction(nameof(Details), new { id = visit.Id });
+            }
+
+            bool isLekarz = User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka");
+            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (isLekarz && visit.AssignedDoctorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            _context.MedicalProcedures.Remove(procedure);
+            await _context.SaveChangesAsync();
+            
+            TempData["SuccessMessage"] = "Procedura usunięta.";
+            return RedirectToAction(nameof(Details), new { id = visit.Id });
         }
 
         private async Task PopulateDropDownsAsync(object? selectedPatient = null, object? selectedDoctor = null)

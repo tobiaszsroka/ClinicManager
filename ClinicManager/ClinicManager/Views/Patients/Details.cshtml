@@ -59,13 +59,14 @@
                             <tr>
                                 <th>Data</th>
                                 <th>Status</th>
+                                <th>Całkowity Koszt</th>
                                 <th class="text-end">Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (Model.Visits == null || !Model.Visits.Any())
                             {
-                                <tr><td colspan="3" class="text-center text-muted py-3">Ten pacjent nie ma żadnych zapisanych wizyt.</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-3">Ten pacjent nie ma żadnych zapisanych wizyt.</td></tr>
                             }
                             else
                             {
@@ -89,6 +90,9 @@
                                                     <span class="badge bg-danger">Anulowana</span>
                                                     break;
                                             }
+                                        </td>
+                                        <td class="align-middle">
+                                            @(visit.Procedures?.Any() == true ? visit.Procedures.Sum(p => p.FinalCost).ToString("c") : "0,00 zł")
                                         </td>
                                         <td class="align-middle text-end">
                                             <a asp-controller="Visits" asp-action="Details" asp-route-id="@visit.Id" class="btn btn-sm btn-outline-info">Pokaż szczegóły</a>

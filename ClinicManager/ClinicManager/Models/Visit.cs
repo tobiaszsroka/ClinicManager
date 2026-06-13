@@ -11,6 +11,8 @@ namespace ClinicManager.Models
         [Required(ErrorMessage = "Data wizyty jest wymagana")]
         public DateTime ScheduledDate { get; set; }
 
+        public MedicalRecord? MedicalRecord { get; set; }
+
         public VisitStatus Status { get; set; } = VisitStatus.Scheduled;
 
         // Klucz obcy pacjenta
@@ -26,7 +28,7 @@ namespace ClinicManager.Models
         [ForeignKey("AssignedDoctorId")]
         public Microsoft.AspNetCore.Identity.IdentityUser? Doctor { get; set; }
 
-        public ICollection<ProcedurePerformed> Procedures { get; set; } = new List<ProcedurePerformed>();
+        public ICollection<MedicalProcedure> Procedures { get; set; } = new List<MedicalProcedure>();
         public ICollection<ClinicalNote> ClinicalNotes { get; set; } = new List<ClinicalNote>();
     }
 }
