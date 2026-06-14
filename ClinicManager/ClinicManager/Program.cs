@@ -1,15 +1,23 @@
 using ClinicManager.Data;
+using ClinicManager.Middleware;
 using ClinicManager.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
+using NLog;
+using NLog.Web;
 using QuestPDF.Infrastructure;
 
 QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
+Environment.SetEnvironmentVariable("CLINICMANAGER_LOG_DIR", logDirectory);
 
-// Add services to the container.
+var bootstrapLogger = LogManager
+    .Setup()
+    .LoadConfigurationFromFile("nlog.config")
+    .GetCurrentClassLogger();
+
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -27,35 +35,49 @@ builder.Services.AddScoped<ReportService>();
 
 builder.Services.AddRazorPages();
 
-var app = builder.Build();
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
 
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services = scope.ServiceProvider;
-    await DataSeeder.SeedRolesAndAdminAsync(services);
-}
+    var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        await DataSeeder.SeedRolesAndAdminAsync(services);
+    }
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/Home/Error");
+        app.UseHsts();
+    }
+
+    app.UseMiddleware<ExceptionLoggingMiddleware>();
+
+    app.UseHttpsRedirection();
+    app.UseRouting();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapStaticAssets();
+
+    app.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=Home}/{action=Index}/{id?}")
+        .WithStaticAssets();
+    app.MapRazorPages();
+
+    app.Run();
+}
+catch (Exception exception)
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    bootstrapLogger.Error(exception, "Aplikacja została zatrzymana z powodu nieobsłużonego wyjątku.");
+    throw;
 }
-
-app.UseHttpsRedirection();
-app.UseRouting();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapStaticAssets();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-app.MapRazorPages();
-
-
-app.Run();
+finally
+{
+    LogManager.Shutdown();
+}
