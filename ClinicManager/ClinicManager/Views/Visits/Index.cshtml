@@ -1,4 +1,4 @@
-@model IEnumerable<ClinicManager.Models.Visit>
+@model IEnumerable<ClinicManager.DTOs.VisitDto>
 @{
     ViewData["Title"] = "Harmonogram Wizyt";
 }
@@ -29,8 +29,8 @@
                 @foreach (var item in Model) {
                 <tr>
                     <td class="align-middle fw-bold">@item.ScheduledDate.ToString("g")</td>
-                    <td class="align-middle">@item.Patient?.FirstName @item.Patient?.LastName</td>
-                    <td class="align-middle">@item.Doctor?.Email</td>
+                    <td class="align-middle">@item.PatientFirstName @item.PatientLastName</td>
+                    <td class="align-middle">@item.DoctorEmail</td>
                     <td class="align-middle">
                         @switch (item.Status)
                         {

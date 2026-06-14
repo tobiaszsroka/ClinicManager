@@ -1,186 +1,93 @@
-using ClinicManager.Data;
-using ClinicManager.Models;
+using ClinicManager.DTOs;
+using ClinicManager.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
-namespace ClinicManager.Controllers
+namespace ClinicManager.Controllers;
+
+[Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
+public class PatientsController : Controller
 {
-    [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
-    public class PatientsController : Controller
+    private readonly PatientService _patientService;
+
+    public PatientsController(PatientService patientService)
     {
-        private readonly ApplicationDbContext _context;
+        _patientService = patientService;
+    }
 
-        public PatientsController(ApplicationDbContext context)
+    public async Task<IActionResult> Index(string? searchString)
+    {
+        ViewData["CurrentFilter"] = searchString;
+        return View(await _patientService.GetAllAsync(searchString));
+    }
+
+    public async Task<IActionResult> Details(int? id)
+    {
+        if (id == null) return NotFound();
+
+        var patient = await _patientService.GetDetailsAsync(id.Value);
+        return patient == null ? NotFound() : View(patient);
+    }
+
+    public IActionResult Create()
+    {
+        return View(new PatientDto());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(PatientDto patient)
+    {
+        if (await _patientService.PeselExistsAsync(patient.Pesel))
         {
-            _context = context;
+            ModelState.AddModelError(nameof(patient.Pesel), "Pacjent z takim numerem PESEL już istnieje w systemie.");
         }
 
-        // GET: Patients
-        public async Task<IActionResult> Index(string searchString)
+        if (!ModelState.IsValid) return View(patient);
+
+        await _patientService.CreateAsync(patient);
+        return RedirectToAction(nameof(Index));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        if (id == null) return NotFound();
+
+        var patient = await _patientService.GetByIdAsync(id.Value);
+        return patient == null ? NotFound() : View(patient);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, PatientDto patient)
+    {
+        if (id != patient.Id) return NotFound();
+
+        if (await _patientService.PeselExistsAsync(patient.Pesel, patient.Id))
         {
-            ViewData["CurrentFilter"] = searchString;
-
-            var patients = from p in _context.Patients
-                           select p;
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                patients = patients.Where(s => s.LastName.Contains(searchString)
-                                       || s.Pesel.Contains(searchString));
-            }
-
-            return View(await patients.ToListAsync());
+            ModelState.AddModelError(nameof(patient.Pesel), "Pacjent z takim numerem PESEL już istnieje w systemie.");
         }
 
-        // GET: Patients/Details/5
-        [Authorize(Roles = "Admin,Lekarz,Rejestratorka")]
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
+        if (!ModelState.IsValid) return View(patient);
 
-            var patient = await _context.Patients
-                .Include(p => p.MedicalRecord)
-                .Include(p => p.Visits)
-                    .ThenInclude(v => v.Procedures)
-                .Include(p => p.Visits)
-                    .ThenInclude(v => v.PrescribedMedications)
-                        .ThenInclude(p => p.Medication)
-                .Include(p => p.Visits)
-                    .ThenInclude(v => v.ClinicalNotes)
-                .FirstOrDefaultAsync(m => m.Id == id);
-                
-            if (patient == null)
-            {
-                return NotFound();
-            }
+        return await _patientService.UpdateAsync(patient)
+            ? RedirectToAction(nameof(Index))
+            : NotFound();
+    }
 
-            return View(patient);
-        }
+    public async Task<IActionResult> Delete(int? id)
+    {
+        if (id == null) return NotFound();
 
-        // GET: Patients/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
+        var patient = await _patientService.GetByIdAsync(id.Value);
+        return patient == null ? NotFound() : View(patient);
+    }
 
-        // POST: Patients/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,FirstName,LastName,Pesel,InsuranceNumber,PhoneNumber,Email")] Patient patient)
-        {
-            if (ModelState.IsValid)
-            {
-                // Sprawdzenie unikalności PESEL
-                if (await _context.Patients.AnyAsync(p => p.Pesel == patient.Pesel))
-                {
-                    ModelState.AddModelError("Pesel", "Pacjent z takim numerem PESEL już istnieje w systemie.");
-                    return View(patient);
-                }
-
-                _context.Add(patient);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(patient);
-        }
-
-        // GET: Patients/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var patient = await _context.Patients.FindAsync(id);
-            if (patient == null)
-            {
-                return NotFound();
-            }
-            return View(patient);
-        }
-
-        // POST: Patients/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,FirstName,LastName,Pesel,InsuranceNumber,PhoneNumber,Email")] Patient patient)
-        {
-            if (id != patient.Id)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                // Sprawdzenie unikalności PESEL dla innego pacjenta
-                if (await _context.Patients.AnyAsync(p => p.Pesel == patient.Pesel && p.Id != patient.Id))
-                {
-                    ModelState.AddModelError("Pesel", "Pacjent z takim numerem PESEL już istnieje w systemie.");
-                    return View(patient);
-                }
-
-                try
-                {
-                    _context.Update(patient);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!PatientExists(patient.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(patient);
-        }
-
-        // GET: Patients/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var patient = await _context.Patients
-                .FirstOrDefaultAsync(m => m.Id == id);
-            
-            if (patient == null)
-            {
-                return NotFound();
-            }
-
-            return View(patient);
-        }
-
-        // POST: Patients/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var patient = await _context.Patients.FindAsync(id);
-            if (patient != null)
-            {
-                _context.Patients.Remove(patient);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool PatientExists(int id)
-        {
-            return _context.Patients.Any(e => e.Id == id);
-        }
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        await _patientService.DeleteAsync(id);
+        return RedirectToAction(nameof(Index));
     }
 }

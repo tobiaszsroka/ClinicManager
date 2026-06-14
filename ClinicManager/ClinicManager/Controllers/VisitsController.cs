@@ -1,452 +1,306 @@
-using ClinicManager.Data;
+using ClinicManager.DTOs;
 using ClinicManager.Models;
+using ClinicManager.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-namespace ClinicManager.Controllers
+namespace ClinicManager.Controllers;
+
+[Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
+public class VisitsController : Controller
 {
-    [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
-    public class VisitsController : Controller
+    private readonly VisitService _visitService;
+
+    public VisitsController(VisitService visitService)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        _visitService = visitService;
+    }
 
-        public VisitsController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+    public async Task<IActionResult> Index()
+    {
+        var doctorId = IsDoctorOnly()
+            ? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            : null;
+
+        return View(await _visitService.GetAllAsync(doctorId));
+    }
+
+    public async Task<IActionResult> Details(int? id)
+    {
+        if (id == null) return NotFound();
+
+        var visit = await _visitService.GetDetailsAsync(id.Value);
+        if (visit == null) return NotFound();
+        if (!CanDoctorAccess(visit)) return Forbid();
+
+        await PopulateMedicationOptionsAsync();
+        return View(visit);
+    }
+
+    [Authorize(Roles = "Admin,Rejestratorka")]
+    public async Task<IActionResult> Create(int? patientId)
+    {
+        await PopulateVisitOptionsAsync(patientId);
+        return View(new VisitDto
         {
-            _context = context;
-            _userManager = userManager;
+            ScheduledDate = DateTime.Now.AddDays(1),
+            PatientId = patientId ?? 0
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Rejestratorka")]
+    public async Task<IActionResult> Create(VisitDto visit)
+    {
+        if (visit.ScheduledDate < DateTime.Now)
+        {
+            ModelState.AddModelError(nameof(visit.ScheduledDate), "Wizyta nie może zostać zaplanowana w przeszłości.");
+        }
+        else if (await _visitService.HasTimeConflictAsync(
+            visit.AssignedDoctorId,
+            visit.PatientId,
+            visit.ScheduledDate))
+        {
+            ModelState.AddModelError(
+                nameof(visit.ScheduledDate),
+                "Kolizja terminów! Lekarz lub pacjent ma w tym czasie inną wizytę (wymagane 30 min odstępu).");
         }
 
-        // GET: Visits
-        public async Task<IActionResult> Index()
+        if (!ModelState.IsValid)
         {
-            IQueryable<Visit> visitsQuery = _context.Visits
-                .Include(v => v.Patient)
-                .Include(v => v.Doctor);
-
-            if (User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka"))
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (userId != null)
-                {
-                    visitsQuery = visitsQuery.Where(v => v.AssignedDoctorId == userId);
-                }
-            }
-
-            return View(await visitsQuery.OrderBy(v => v.ScheduledDate).ToListAsync());
-        }
-
-        // GET: Visits/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var visit = await _context.Visits
-                .Include(v => v.Patient)
-                .Include(v => v.Doctor)
-                .Include(v => v.Procedures)
-                .Include(v => v.PrescribedMedications)
-                    .ThenInclude(p => p.Medication)
-                .Include(v => v.ClinicalNotes)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            
-            if (visit == null) return NotFound();
-
-            if (User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka"))
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (visit.AssignedDoctorId != userId) return Forbid();
-            }
-
-            var medications = await _context.Medications
-                .AsNoTracking()
-                .OrderBy(m => m.Name)
-                .Select(m => new { m.Id, Label = m.Name + " (" + m.UnitPrice.ToString("0.00") + " zł)" })
-                .ToListAsync();
-            ViewData["MedicationId"] = new SelectList(medications, "Id", "Label");
-            ViewData["HasMedications"] = medications.Count > 0;
-
+            await PopulateVisitOptionsAsync(visit.PatientId, visit.AssignedDoctorId);
             return View(visit);
         }
 
-        // GET: Visits/Create
-        [Authorize(Roles = "Admin,Rejestratorka")]
-        public async Task<IActionResult> Create(int? patientId)
+        await _visitService.CreateAsync(visit);
+        return RedirectToAction(nameof(Index));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        if (id == null) return NotFound();
+
+        var visit = await _visitService.GetByIdAsync(id.Value);
+        if (visit == null) return NotFound();
+        if (!CanDoctorAccess(visit)) return Forbid();
+
+        await PopulateVisitOptionsAsync(visit.PatientId, visit.AssignedDoctorId);
+        return View(visit);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, VisitDto visit)
+    {
+        if (id != visit.Id) return NotFound();
+
+        var currentVisit = await _visitService.GetByIdAsync(id);
+        if (currentVisit == null) return NotFound();
+        if (!CanDoctorAccess(currentVisit)) return Forbid();
+
+        if (IsDoctorOnly())
         {
-            await PopulateDropDownsAsync();
-            var visit = new Visit { ScheduledDate = DateTime.Now.AddDays(1) };
-            if (patientId.HasValue) visit.PatientId = patientId.Value;
-            
+            return await _visitService.UpdateStatusAsync(id, visit.Status)
+                ? RedirectToAction(nameof(Index))
+                : NotFound();
+        }
+
+        if (await _visitService.HasTimeConflictAsync(
+            visit.AssignedDoctorId,
+            visit.PatientId,
+            visit.ScheduledDate,
+            visit.Id))
+        {
+            ModelState.AddModelError(
+                nameof(visit.ScheduledDate),
+                "Kolizja terminów! Lekarz lub pacjent ma w tym czasie inną wizytę (wymagane 30 min odstępu).");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PopulateVisitOptionsAsync(visit.PatientId, visit.AssignedDoctorId);
             return View(visit);
         }
 
-        // POST: Visits/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Rejestratorka")]
-        public async Task<IActionResult> Create([Bind("ScheduledDate,Status,PatientId,AssignedDoctorId")] Visit visit)
-        {
-            if (visit.ScheduledDate < DateTime.Now)
-            {
-                ModelState.AddModelError("ScheduledDate", "Wizyta nie może zostać zaplanowana w przeszłości.");
-            }
-            else if (await HasTimeConflictAsync(visit.AssignedDoctorId, visit.PatientId, visit.ScheduledDate))
-            {
-                ModelState.AddModelError("ScheduledDate", "Kolizja terminów! Lekarz lub pacjent ma w tym czasie inną wizytę (wymagane 30 min odstępu).");
-            }
+        return await _visitService.UpdateAsync(visit)
+            ? RedirectToAction(nameof(Index))
+            : NotFound();
+    }
 
-            if (ModelState.IsValid)
-            {
-                _context.Add(visit);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            await PopulateDropDownsAsync(visit.PatientId, visit.AssignedDoctorId);
-            return View(visit);
+    [Authorize(Roles = "Admin,Rejestratorka")]
+    public async Task<IActionResult> Delete(int? id)
+    {
+        if (id == null) return NotFound();
+
+        var visit = await _visitService.GetForDeleteAsync(id.Value);
+        return visit == null ? NotFound() : View(visit);
+    }
+
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Rejestratorka")]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        await _visitService.DeleteAsync(id);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddProcedure(MedicalProcedureDto procedure)
+    {
+        var visit = await _visitService.GetByIdAsync(procedure.VisitId);
+        if (visit == null) return NotFound();
+
+        if (visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
+        {
+            TempData["ErrorMessage"] = "Nie można dodać procedury do zakończonej lub anulowanej wizyty.";
+            return RedirectToAction(nameof(Details), new { id = procedure.VisitId });
         }
 
-        // GET: Visits/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        if (!CanDoctorAccess(visit)) return Forbid();
+        if (!ModelState.IsValid)
         {
-            if (id == null) return NotFound();
-
-            var visit = await _context.Visits.FindAsync(id);
-            if (visit == null) return NotFound();
-
-            if (User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka"))
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (visit.AssignedDoctorId != userId) return Forbid();
-            }
-
-            await PopulateDropDownsAsync(visit.PatientId, visit.AssignedDoctorId);
-            return View(visit);
+            TempData["ErrorMessage"] = "Sprawdź dane procedury.";
+            return RedirectToAction(nameof(Details), new { id = procedure.VisitId });
         }
 
-        // POST: Visits/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ScheduledDate,Status,PatientId,AssignedDoctorId")] Visit visit)
+        await _visitService.AddProcedureAsync(procedure);
+        TempData["SuccessMessage"] = "Procedura została pomyślnie dodana do wizyty.";
+        return RedirectToAction(nameof(Details), new { id = procedure.VisitId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteProcedure(int procedureId)
+    {
+        var visit = await _visitService.GetByProcedureIdAsync(procedureId);
+        if (visit == null) return NotFound();
+
+        if (visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
         {
-            if (id != visit.Id) return NotFound();
-
-            var visitInDb = await _context.Visits.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id);
-            if (visitInDb == null) return NotFound();
-
-            bool isLekarz = User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka");
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (isLekarz && visitInDb.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            if (ModelState.IsValid)
-            {
-                if (!isLekarz && await HasTimeConflictAsync(visit.AssignedDoctorId, visit.PatientId, visit.ScheduledDate, visit.Id))
-                {
-                    ModelState.AddModelError("ScheduledDate", "Kolizja terminów! Lekarz lub pacjent ma w tym czasie inną wizytę (wymagane 30 min odstępu).");
-                    await PopulateDropDownsAsync(visit.PatientId, visit.AssignedDoctorId);
-                    return View(visit);
-                }
-
-                try
-                {
-                    if (isLekarz)
-                    {
-                        // Lekarz może zmienić TYLKO status.
-                        visitInDb.Status = visit.Status;
-                        _context.Update(visitInDb);
-                    }
-                    else
-                    {
-                        // Admin / Rejestratorka mogą zmienić wszystko
-                        _context.Update(visit);
-                    }
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!VisitExists(visit.Id)) return NotFound();
-                    else throw;
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            await PopulateDropDownsAsync(visit.PatientId, visit.AssignedDoctorId);
-            return View(visit);
-        }
-
-        // GET: Visits/Delete/5
-        [Authorize(Roles = "Admin,Rejestratorka")]
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var visit = await _context.Visits
-                .Include(v => v.Patient)
-                .Include(v => v.Doctor)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (visit == null) return NotFound();
-
-            return View(visit);
-        }
-
-        // POST: Visits/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Rejestratorka")]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var visit = await _context.Visits.FindAsync(id);
-            if (visit != null)
-            {
-                _context.Visits.Remove(visit);
-            }
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool VisitExists(int id)
-        {
-            return _context.Visits.Any(e => e.Id == id);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
-        public async Task<IActionResult> AddProcedure(int visitId, string name, string description, decimal baseCost, decimal discount)
-        {
-            var visit = await _context.Visits.FindAsync(visitId);
-            if (visit == null) return NotFound();
-
-            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
-            {
-                TempData["ErrorMessage"] = "Nie można dodać procedury do zakończonej lub anulowanej wizyty.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            bool isLekarz = User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka");
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (isLekarz && visit.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            var procedure = new MedicalProcedure
-            {
-                VisitId = visitId,
-                Name = name,
-                Description = description,
-                BaseCost = baseCost,
-                Discount = discount
-            };
-
-            _context.MedicalProcedures.Add(procedure);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Procedura została pomyślnie dodana do wizyty.";
-            return RedirectToAction(nameof(Details), new { id = visitId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Rejestratorka,Lekarz")]
-        public async Task<IActionResult> DeleteProcedure(int procedureId)
-        {
-            var procedure = await _context.MedicalProcedures.Include(p => p.Visit).FirstOrDefaultAsync(p => p.Id == procedureId);
-            if (procedure == null) return NotFound();
-
-            var visit = procedure.Visit;
-            if (visit!.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
-            {
-                TempData["ErrorMessage"] = "Nie można usuwać procedur z zakończonej wizyty.";
-                return RedirectToAction(nameof(Details), new { id = visit.Id });
-            }
-
-            bool isLekarz = User.IsInRole("Lekarz") && !User.IsInRole("Admin") && !User.IsInRole("Rejestratorka");
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (isLekarz && visit.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            _context.MedicalProcedures.Remove(procedure);
-            await _context.SaveChangesAsync();
-            
-            TempData["SuccessMessage"] = "Procedura usunięta.";
+            TempData["ErrorMessage"] = "Nie można usuwać procedur z zakończonej wizyty.";
             return RedirectToAction(nameof(Details), new { id = visit.Id });
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Lekarz")]
-        public async Task<IActionResult> AddPrescription(int visitId, int medicationId, string dosage, int quantity)
+        if (!CanDoctorAccess(visit)) return Forbid();
+
+        await _visitService.DeleteProcedureAsync(procedureId);
+        TempData["SuccessMessage"] = "Procedura usunięta.";
+        return RedirectToAction(nameof(Details), new { id = visit.Id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Lekarz")]
+    public async Task<IActionResult> AddPrescription(PrescribedMedicationDto prescription)
+    {
+        var visit = await _visitService.GetByIdAsync(prescription.VisitId);
+        if (visit == null) return NotFound();
+
+        if (visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
         {
-            var visit = await _context.Visits.FindAsync(visitId);
-            if (visit == null) return NotFound();
-
-            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
-            {
-                TempData["ErrorMessage"] = "Nie można wystawić recepty do zakończonej lub anulowanej wizyty.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            bool isDoctorOnly = User.IsInRole("Lekarz") && !User.IsInRole("Admin");
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (isDoctorOnly && visit.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            var medication = await _context.Medications.FindAsync(medicationId);
-            if (medication == null)
-            {
-                TempData["ErrorMessage"] = "Wybrany lek nie istnieje w katalogu.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            if (string.IsNullOrWhiteSpace(dosage) || dosage.Length > 100)
-            {
-                TempData["ErrorMessage"] = "Podaj dawkowanie o długości do 100 znaków.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            if (quantity < 1 || quantity > 1000)
-            {
-                TempData["ErrorMessage"] = "Ilość leku musi mieścić się w zakresie od 1 do 1000.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            _context.PrescribedMedications.Add(new PrescribedMedication
-            {
-                VisitId = visitId,
-                MedicationId = medication.Id,
-                Dosage = dosage.Trim(),
-                Quantity = quantity,
-                UnitPriceAtPrescription = medication.UnitPrice
-            });
-
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Lek został dodany do recepty.";
-            return RedirectToAction(nameof(Details), new { id = visitId });
+            TempData["ErrorMessage"] = "Nie można wystawić recepty do zakończonej lub anulowanej wizyty.";
+            return RedirectToAction(nameof(Details), new { id = prescription.VisitId });
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Lekarz")]
-        public async Task<IActionResult> DeletePrescription(int prescriptionId)
+        if (!CanDoctorAccess(visit)) return Forbid();
+
+        prescription.Dosage = prescription.Dosage.Trim();
+        if (!ModelState.IsValid)
         {
-            var prescription = await _context.PrescribedMedications
-                .Include(p => p.Visit)
-                .FirstOrDefaultAsync(p => p.Id == prescriptionId);
+            TempData["ErrorMessage"] = "Sprawdź dawkowanie i ilość leku.";
+            return RedirectToAction(nameof(Details), new { id = prescription.VisitId });
+        }
 
-            if (prescription == null) return NotFound();
+        if (!await _visitService.AddPrescriptionAsync(prescription))
+        {
+            TempData["ErrorMessage"] = "Wybrany lek nie istnieje w katalogu.";
+            return RedirectToAction(nameof(Details), new { id = prescription.VisitId });
+        }
 
-            var visit = prescription.Visit!;
-            if (visit.Status == VisitStatus.Completed || visit.Status == VisitStatus.Cancelled)
-            {
-                TempData["ErrorMessage"] = "Nie można zmieniać recepty zakończonej lub anulowanej wizyty.";
-                return RedirectToAction(nameof(Details), new { id = visit.Id });
-            }
+        TempData["SuccessMessage"] = "Lek został dodany do recepty.";
+        return RedirectToAction(nameof(Details), new { id = prescription.VisitId });
+    }
 
-            bool isDoctorOnly = User.IsInRole("Lekarz") && !User.IsInRole("Admin");
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Lekarz")]
+    public async Task<IActionResult> DeletePrescription(int prescriptionId)
+    {
+        var visit = await _visitService.GetByPrescriptionIdAsync(prescriptionId);
+        if (visit == null) return NotFound();
 
-            if (isDoctorOnly && visit.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            _context.PrescribedMedications.Remove(prescription);
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Lek został usunięty z recepty.";
+        if (visit.Status is VisitStatus.Completed or VisitStatus.Cancelled)
+        {
+            TempData["ErrorMessage"] = "Nie można zmieniać recepty zakończonej lub anulowanej wizyty.";
             return RedirectToAction(nameof(Details), new { id = visit.Id });
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Lekarz")]
-        public async Task<IActionResult> AddNote(int visitId, string? content)
+        if (!CanDoctorAccess(visit)) return Forbid();
+
+        await _visitService.DeletePrescriptionAsync(prescriptionId);
+        TempData["SuccessMessage"] = "Lek został usunięty z recepty.";
+        return RedirectToAction(nameof(Details), new { id = visit.Id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Lekarz")]
+    public async Task<IActionResult> AddNote(ClinicalNoteDto note)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null) return Forbid();
+
+        var visit = await _visitService.GetByIdAsync(note.VisitId);
+        if (visit == null) return NotFound();
+        if (visit.AssignedDoctorId != currentUserId) return Forbid();
+
+        if (visit.Status != VisitStatus.InProgress)
         {
-            string? currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currentUserId == null)
-            {
-                return Forbid();
-            }
-
-            var visit = await _context.Visits
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == visitId);
-
-            if (visit == null)
-            {
-                return NotFound();
-            }
-
-            if (visit.AssignedDoctorId != currentUserId)
-            {
-                return Forbid();
-            }
-
-            if (visit.Status != VisitStatus.InProgress)
-            {
-                TempData["ErrorMessage"] = "Notatkę kliniczną można dodać tylko do wizyty w trakcie.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            content = content?.Trim();
-            if (string.IsNullOrWhiteSpace(content) || content.Length > 4000)
-            {
-                TempData["ErrorMessage"] = "Treść notatki jest wymagana i może mieć maksymalnie 4000 znaków.";
-                return RedirectToAction(nameof(Details), new { id = visitId });
-            }
-
-            _context.ClinicalNotes.Add(new ClinicalNote
-            {
-                VisitId = visitId,
-                Content = content,
-                Author = currentUserId,
-                Timestamp = DateTime.Now
-            });
-
-            await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Notatka kliniczna została dodana.";
-            return RedirectToAction(nameof(Details), new { id = visitId });
+            TempData["ErrorMessage"] = "Notatkę kliniczną można dodać tylko do wizyty w trakcie.";
+            return RedirectToAction(nameof(Details), new { id = note.VisitId });
         }
 
-        private async Task PopulateDropDownsAsync(object? selectedPatient = null, object? selectedDoctor = null)
+        note.Content = note.Content.Trim();
+        if (!ModelState.IsValid)
         {
-            ViewData["PatientId"] = new SelectList(_context.Patients.Select(p => new {
-                Id = p.Id,
-                FullName = p.FirstName + " " + p.LastName + " (" + p.Pesel + ")"
-            }), "Id", "FullName", selectedPatient);
-
-            var doctors = await _userManager.GetUsersInRoleAsync("Lekarz");
-            ViewData["AssignedDoctorId"] = new SelectList(doctors.Select(d => new {
-                Id = d.Id,
-                Email = d.Email
-            }), "Id", "Email", selectedDoctor);
+            TempData["ErrorMessage"] = "Treść notatki jest wymagana i może mieć maksymalnie 4000 znaków.";
+            return RedirectToAction(nameof(Details), new { id = note.VisitId });
         }
 
-        private async Task<bool> HasTimeConflictAsync(string doctorId, int patientId, DateTime date, int? excludeVisitId = null)
-        {
-            var startTime = date.AddMinutes(-29);
-            var endTime = date.AddMinutes(29);
+        await _visitService.AddNoteAsync(note, currentUserId);
+        TempData["SuccessMessage"] = "Notatka kliniczna została dodana.";
+        return RedirectToAction(nameof(Details), new { id = note.VisitId });
+    }
 
-            return await _context.Visits.AnyAsync(v =>
-                v.Status != VisitStatus.Cancelled &&
-                v.Status != VisitStatus.Completed &&
-                (!excludeVisitId.HasValue || v.Id != excludeVisitId.Value) &&
-                (v.AssignedDoctorId == doctorId || v.PatientId == patientId) &&
-                v.ScheduledDate >= startTime &&
-                v.ScheduledDate <= endTime);
-        }
+    private bool IsDoctorOnly()
+    {
+        return User.IsInRole("Lekarz") &&
+            !User.IsInRole("Admin") &&
+            !User.IsInRole("Rejestratorka");
+    }
+
+    private bool CanDoctorAccess(VisitDto visit)
+    {
+        return !IsDoctorOnly() ||
+            visit.AssignedDoctorId == User.FindFirstValue(ClaimTypes.NameIdentifier);
+    }
+
+    private async Task PopulateVisitOptionsAsync(object? selectedPatient = null, object? selectedDoctor = null)
+    {
+        var options = await _visitService.GetFormOptionsAsync();
+        ViewData["PatientId"] = new SelectList(options.Patients, "Value", "Text", selectedPatient?.ToString());
+        ViewData["AssignedDoctorId"] = new SelectList(options.Doctors, "Value", "Text", selectedDoctor?.ToString());
+    }
+
+    private async Task PopulateMedicationOptionsAsync()
+    {
+        var options = await _visitService.GetFormOptionsAsync();
+        ViewData["MedicationId"] = new SelectList(options.Medications, "Value", "Text");
+        ViewData["HasMedications"] = options.Medications.Count > 0;
     }
 }

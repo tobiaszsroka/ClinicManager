@@ -1,4 +1,5 @@
 using ClinicManager.Data;
+using ClinicManager.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddScoped<PatientService>();
+builder.Services.AddScoped<MedicationService>();
+builder.Services.AddScoped<VisitService>();
+builder.Services.AddScoped<MedicalRecordService>();
+builder.Services.AddScoped<ReportService>();
 
 builder.Services.AddRazorPages();
 

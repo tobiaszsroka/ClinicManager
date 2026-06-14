@@ -1,7 +1,7 @@
-using ClinicManager.Data;
+using ClinicManager.DTOs;
+using ClinicManager.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -11,11 +11,11 @@ namespace ClinicManager.Controllers
     [Authorize(Roles = "Admin,Rejestratorka")]
     public class ReportsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ReportService _reportService;
 
-        public ReportsController(ApplicationDbContext context)
+        public ReportsController(ReportService reportService)
         {
-            _context = context;
+            _reportService = reportService;
         }
 
         public IActionResult Index()
@@ -36,17 +36,7 @@ namespace ClinicManager.Controllers
             var startDate = new DateTime(year, month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            var visits = await _context.Visits
-                .Include(v => v.Patient)
-                .Include(v => v.Doctor)
-                .Include(v => v.Procedures)
-                .Include(v => v.PrescribedMedications)
-                    .ThenInclude(pm => pm.Medication)
-                .Where(v => v.Status == Models.VisitStatus.Completed && 
-                            v.ScheduledDate >= startDate && 
-                            v.ScheduledDate <= endDate)
-                .OrderBy(v => v.ScheduledDate)
-                .ToListAsync();
+            var visits = await _reportService.GetCompletedVisitsAsync(startDate, endDate);
 
             var document = Document.Create(container =>
             {
@@ -80,7 +70,7 @@ namespace ClinicManager.Controllers
             });
         }
 
-        private void ComposeContent(IContainer container, List<Models.Visit> visits)
+        private void ComposeContent(IContainer container, IReadOnlyCollection<ReportVisitDto> visits)
         {
             container.PaddingVertical(1, Unit.Centimetre).Column(column =>
             {
@@ -112,14 +102,14 @@ namespace ClinicManager.Controllers
 
                     foreach (var visit in visits)
                     {
-                        var proceduresCost = visit.Procedures?.Sum(p => p.FinalCost) ?? 0;
-                        var medsCost = visit.PrescribedMedications?.Sum(m => m.UnitPriceAtPrescription * m.Quantity) ?? 0;
-                        var visitTotal = proceduresCost + medsCost;
+                        var proceduresCost = visit.ProceduresCost;
+                        var medsCost = visit.MedicationsCost;
+                        var visitTotal = visit.TotalCost;
                         totalSum += visitTotal;
 
                         table.Cell().Text(visit.ScheduledDate.ToString("dd.MM.yyyy"));
-                        table.Cell().Text($"{visit.Patient?.FirstName} {visit.Patient?.LastName}");
-                        table.Cell().Text(visit.Doctor?.Email?.Split('@')[0] ?? "Nieznany");
+                        table.Cell().Text($"{visit.PatientFirstName} {visit.PatientLastName}");
+                        table.Cell().Text(visit.DoctorEmail?.Split('@')[0] ?? "Nieznany");
                         table.Cell().AlignRight().Text(proceduresCost.ToString("c"));
                         table.Cell().AlignRight().Text(medsCost.ToString("c"));
                         table.Cell().AlignRight().Text(visitTotal.ToString("c")).SemiBold();

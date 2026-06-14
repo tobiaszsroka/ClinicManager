@@ -1,4 +1,4 @@
-@model ClinicManager.Models.Visit
+@model ClinicManager.DTOs.VisitDto
 @{ ViewData["Title"] = "Usuwanie Wizyty"; }
 
 <div class="mb-4">
@@ -16,10 +16,10 @@
             <dd class="col-sm-8">@Model.Status</dd>
 
             <dt class="col-sm-4">Pacjent</dt>
-            <dd class="col-sm-8">@Model.Patient?.FirstName @Model.Patient?.LastName</dd>
+            <dd class="col-sm-8">@Model.PatientFirstName @Model.PatientLastName</dd>
             
             <dt class="col-sm-4">Lekarz</dt>
-            <dd class="col-sm-8">@Model.Doctor?.Email</dd>
+            <dd class="col-sm-8">@Model.DoctorEmail</dd>
         </dl>
     </div>
 </div>

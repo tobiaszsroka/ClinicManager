@@ -1,4 +1,4 @@
-@model ClinicManager.Models.Visit
+@model ClinicManager.DTOs.VisitDto
 @{
     ViewData["Title"] = "Szczegóły Wizyty";
     var procedureCost = Model.Procedures?.Sum(p => p.FinalCost) ?? 0;
@@ -49,10 +49,10 @@
             </dd>
 
             <dt class="col-sm-4">Pacjent</dt>
-            <dd class="col-sm-8"><a asp-controller="Patients" asp-action="Details" asp-route-id="@Model.PatientId">@Model.Patient?.FirstName @Model.Patient?.LastName</a></dd>
+            <dd class="col-sm-8"><a asp-controller="Patients" asp-action="Details" asp-route-id="@Model.PatientId">@Model.PatientFirstName @Model.PatientLastName</a></dd>
             
             <dt class="col-sm-4">Lekarz</dt>
-            <dd class="col-sm-8">@Model.Doctor?.Email</dd>
+            <dd class="col-sm-8">@Model.DoctorEmail</dd>
         </dl>
     </div>
 </div>
@@ -220,7 +220,7 @@
                         @foreach (var prescription in Model.PrescribedMedications)
                         {
                             <tr>
-                                <td>@prescription.Medication?.Name</td>
+                                <td>@prescription.MedicationName</td>
                                 <td>@prescription.Dosage</td>
                                 <td>@prescription.Quantity</td>
                                 <td>@prescription.UnitPriceAtPrescription.ToString("c")</td>
