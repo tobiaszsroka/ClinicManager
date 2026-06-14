@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "Raporty Finansowe";
+}
+
+<div class="mb-4">
+    <h2>Raporty Finansowe</h2>
+    <p class="text-muted">Generuj zestawienia kosztów z wizyt pacjentów (procedury + leki) w formacie PDF.</p>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="card shadow-sm max-w-lg mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Raport miesięczny</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="DownloadPdf" method="post" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Miesiąc</label>
+                <select name="month" class="form-select" required>
+                    @for (int i = 1; i <= 12; i++)
+                    {
+                        if (i == DateTime.Now.Month)
+                        {
+                            <option value="@i" selected>@System.Globalization.CultureInfo.GetCultureInfo("pl-PL").DateTimeFormat.GetMonthName(i)</option>
+                        }
+                        else
+                        {
+                            <option value="@i">@System.Globalization.CultureInfo.GetCultureInfo("pl-PL").DateTimeFormat.GetMonthName(i)</option>
+                        }
+                    }
+                </select>
+            </div>
+            
+            <div class="col-md-6">
+                <label class="form-label">Rok</label>
+                <input type="number" name="year" class="form-control" value="@DateTime.Now.Year" required min="2000" max="2100" />
+            </div>
+
+            <div class="col-12 mt-4 text-end">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    Pobierz PDF
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
