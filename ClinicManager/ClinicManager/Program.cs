@@ -21,6 +21,21 @@ var bootstrapLogger = LogManager
     .GetCurrentClassLogger();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "ClinicManager API",
+        Version = "v1",
+        Description = "API systemu zarządzania przychodnią medyczną."
+    });
+    options.DocInclusionPredicate((documentName, apiDescription) =>
+        apiDescription.GroupName == documentName);
+
+    var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+});
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -28,6 +43,31 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+});
 
 builder.Services.AddScoped<PatientService>();
 builder.Services.AddScoped<MedicationService>();
@@ -66,6 +106,13 @@ try
 
     app.UseMiddleware<ExceptionLoggingMiddleware>();
 
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ClinicManager API v1");
+        options.RoutePrefix = "swagger";
+    });
+
     app.UseHttpsRedirection();
     app.UseRouting();
 
@@ -74,6 +121,7 @@ try
 
     app.MapStaticAssets();
 
+    app.MapControllers();
     app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}")

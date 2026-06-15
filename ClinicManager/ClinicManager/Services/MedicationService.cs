@@ -36,10 +36,12 @@ public class MedicationService
             m.Name == name && (!excludedId.HasValue || m.Id != excludedId.Value));
     }
 
-    public async Task CreateAsync(MedicationDto medication)
+    public async Task<int> CreateAsync(MedicationDto medication)
     {
-        _context.Medications.Add(MedicationMapper.ToEntity(medication));
+        var entity = MedicationMapper.ToEntity(medication);
+        _context.Medications.Add(entity);
         await _context.SaveChangesAsync();
+        return entity.Id;
     }
 
     public async Task<bool> UpdateAsync(MedicationDto medication)
