@@ -1,8 +1,11 @@
+using ClinicManager.Models;
+
 namespace ClinicManager.DTOs;
 
 public class ReportVisitDto
 {
     public DateTime ScheduledDate { get; set; }
+    public VisitStatus Status { get; set; }
     public string? PatientFirstName { get; set; }
     public string? PatientLastName { get; set; }
     public string? DoctorEmail { get; set; }

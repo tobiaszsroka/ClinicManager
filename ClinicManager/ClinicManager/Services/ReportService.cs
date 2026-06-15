@@ -37,4 +37,22 @@ public class ReportService
             return dto;
         }).ToList();
     }
+
+    public async Task<IReadOnlyCollection<ReportVisitDto>> GetUpcomingVisitsAsync(
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken)
+    {
+        var visits = await _context.Visits
+            .AsNoTracking()
+            .Include(v => v.Patient)
+            .Include(v => v.Doctor)
+            .Where(v => v.Status == VisitStatus.Scheduled &&
+                        v.ScheduledDate >= startDate &&
+                        v.ScheduledDate <= endDate)
+            .OrderBy(v => v.ScheduledDate)
+            .ToListAsync(cancellationToken);
+
+        return visits.Select(ReportMapper.ToDto).ToList();
+    }
 }

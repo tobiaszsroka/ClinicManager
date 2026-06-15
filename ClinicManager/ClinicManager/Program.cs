@@ -1,3 +1,5 @@
+using ClinicManager.BackgroundServices;
+using ClinicManager.Configuration;
 using ClinicManager.Data;
 using ClinicManager.Middleware;
 using ClinicManager.Services;
@@ -32,6 +34,14 @@ builder.Services.AddScoped<MedicationService>();
 builder.Services.AddScoped<VisitService>();
 builder.Services.AddScoped<MedicalRecordService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<PdfReportService>();
+builder.Services.AddScoped<SmtpEmailService>();
+
+builder.Services.Configure<BackgroundReportOptions>(
+    builder.Configuration.GetSection(BackgroundReportOptions.SectionName));
+builder.Services.Configure<SmtpOptions>(
+    builder.Configuration.GetSection(SmtpOptions.SectionName));
+builder.Services.AddHostedService<UpcomingVisitsReportBackgroundService>();
 
 builder.Services.AddRazorPages();
 
