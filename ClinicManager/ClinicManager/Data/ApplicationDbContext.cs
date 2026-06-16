@@ -30,6 +30,18 @@ namespace ClinicManager.Data
                 .Property(m => m.UnitPrice)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<Patient>()
+                .HasIndex(p => p.Pesel);
+
+            modelBuilder.Entity<Patient>()
+                .HasIndex(p => new { p.LastName, p.FirstName });
+
+            modelBuilder.Entity<Visit>()
+                .HasIndex(v => new { v.AssignedDoctorId, v.ScheduledDate });
+
+            modelBuilder.Entity<Visit>()
+                .HasIndex(v => new { v.Status, v.ScheduledDate });
+
             modelBuilder.Entity<PrescribedMedication>()
                 .Property(p => p.UnitPriceAtPrescription)
                 .HasPrecision(18, 2);

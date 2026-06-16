@@ -20,7 +20,8 @@ public class PatientService
 
         if (!string.IsNullOrWhiteSpace(searchString))
         {
-            query = query.Where(p => p.LastName.Contains(searchString) || p.Pesel.Contains(searchString));
+            var search = searchString.Trim();
+            query = query.Where(p => p.LastName.StartsWith(search) || p.Pesel.StartsWith(search));
         }
 
         var patients = await query.OrderBy(p => p.LastName).ThenBy(p => p.FirstName).ToListAsync();
