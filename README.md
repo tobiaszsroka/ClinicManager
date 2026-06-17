@@ -19,7 +19,7 @@ Nowoczesny system zarządzania przychodnią medyczną zaimplementowany w archite
 
 ## 🔐 System Logowania i Role
 
-Aplikacja wykorzystuje ścisły podział uprawnień bazujący na rolach systemowych (RBAC). Dostęp do poszczególnych modułów jest przyznawany dynamicznie w zależności od przypisanej grupy.
+Aplikacja wykorzystuje ścisły podział uprawnień bazujący na rolach systemowych. Dostęp do poszczególnych modułów jest przyznawany dynamicznie w zależności od przypisanej grupy.
 
 Dostępne są 3 główne role w systemie:
 
@@ -30,16 +30,16 @@ Główny zarządca systemu, często dyrekcja placówki.
 - **Moduły:** Rejestracja, edycja bazy leków, podgląd wizyt dowolnego lekarza, pełne zestawienia finansowe i zarządzanie kontami personelu.
 
 ### 2. 👩‍💼 Rejestracja (`Rejestratorka`)
-Pracownik na "pierwszej linii frontu", obsługujący pacjentów bezpośrednio z recepcji lub telefonicznie.
+Pracownik obsługujący pacjentów bezpośrednio z recepcji lub telefonicznie.
 - **Domyślne logowanie:** `rejestracja@clinic.com` / `Rejestracja123!`
 - **Uprawnienia:** Organizacja i koordynacja kalendarza placówki.
-- **Moduły:** Zakładanie nowych wizyt, tworzenie kont pacjentów, anulowanie terminów, dostęp do raportów kosztów. Brak wglądu w bezpośrednie tajemnice lekarskie (notatki medyczne).
+- **Moduły:** Zakładanie nowych wizyt, tworzenie kont pacjentów, anulowanie terminów, dostęp do raportów kosztów. Brak wglądu w notatki medyczne.
 
 ### 3. 🩺 Lekarz (`Lekarz`)
 Pracownik medyczny przyjmujący pacjentów w gabinecie.
-- **Domyślne logowanie:** `lekarz@clinic.com` / `Lekarz123!`
+- **Domyślne logowanie:** `lekarz@clinic.com` lub `nowak@clinic.com` lub `kowalski@clinic.com` / `Lekarz123!`
 - **Uprawnienia:** Dostęp i modyfikowanie dokumentacji klinicznej wyłącznie przypisanych mu pacjentów.
-- **Moduły:** Podgląd dziennego harmonogramu, wypełnianie kart wizyt pacjentów, wprowadzanie notatek klinicznych (wywiad), wystawianie recept na leki oraz dodawanie wykonanych podczas spotkania procedur medycznych (np. USG).
+- **Moduły:** Podgląd dziennego harmonogramu, wypełnianie kart wizyt pacjentów, wprowadzanie notatek klinicznych, wystawianie recept na leki oraz dodawanie wykonanych podczas spotkania procedur medycznych (np. USG).
 
 ---
 
